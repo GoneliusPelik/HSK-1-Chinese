@@ -58,6 +58,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:Nunito,system-ui,
 .opt:disabled{cursor:default}
 @keyframes pop{40%{transform:scale(1.04)}}
 @keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.nav{justify-content:space-between;margin:16px 0 0}.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
 .hint{text-align:center;min-height:1.6em;color:var(--bad);font-weight:800}
 .toast{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,184,148,.94);color:#fff;font-size:2rem;font-weight:800;opacity:0;pointer-events:none;z-index:5}
 .toast span{font-size:4rem}
@@ -118,6 +119,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:Nunito,system-ui,
       <div class="q">Apa pinyin dan artinya?</div>
       <div id="opts"></div>
       <div class="hint" id="hint"></div>
+      <div class="bar nav"><button class="btn alt" id="prev" onclick="nav(-1)">← Sebelumnya</button><button class="btn" id="next" onclick="nav(1)">Selanjutnya →</button></div>
     </div>
   </div>
 
@@ -180,7 +182,7 @@ function tampil(){
 }
 $("cari").oninput=tampil;
 
-let S=[],i=0,kunci=false,N=10,streak=0;
+let S=[],i=0,kunci=false,N=10,streak=0,tm;
 const teks=w=>w[2]+" — "+w[3];
 const acak=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 function pills(){$("pills").innerHTML=[10,20,50,150].map(n=>`<button class="chip${n===N?" on":""}" onclick="N=${n};pills()">${n===150?"Semua (150)":n+" soal"}</button>`).join("")}
@@ -188,33 +190,44 @@ function pills(){$("pills").innerHTML=[10,20,50,150].map(n=>`<button class="chip
 function reset(){$("setup").classList.remove("hide");$("play").classList.add("hide");$("hasil").classList.add("hide");pills()}
 function mulai(){
   S=acak(D).slice(0,N).map(w=>({w,salah:[],opts:acak([w,...acak(D.filter(x=>teks(x)!==teks(w))).slice(0,3)])}));
-  i=0;streak=0;$("toast").classList.remove("show");
+  clearTimeout(tm);i=0;streak=0;$("toast").classList.remove("show");
   $("setup").classList.add("hide");$("hasil").classList.add("hide");$("play").classList.remove("hide");
   scrollTo(0,0);soal();
 }
 function soal(){
-  const q=S[i];kunci=false;$("toast").classList.remove("show");
+  clearTimeout(tm);
+  const q=S[i];kunci=!!q.done;$("toast").classList.remove("show");
   $("info").textContent=`Soal ${i+1} dari ${S.length}`;
   $("streak").textContent=streak>1?`🔥 ${streak} beruntun`:"";
-  $("pb").style.width=(i/S.length*100)+"%";
+  $("pb").style.width=(S.filter(x=>x.done).length/S.length*100)+"%";
   $("hz").textContent=q.w[1];$("hint").textContent="";
-  $("opts").innerHTML=q.opts.map((o,k)=>`<button class="opt" onclick="pilih(${k},this)"><b>${L[k]}</b>${teks(o)}</button>`).join("");
+  $("opts").innerHTML=q.opts.map((o,k)=>{const r=q.done&&o===q.w,x=q.salah.includes(k);
+    return `<button class="opt${r?" right":x?" wrong":""}"${q.done||x?" disabled":""} onclick="pilih(${k},this)"><b>${L[k]}</b>${teks(o)}</button>`}).join("");
+  $("prev").disabled=i===0;
+  $("next").disabled=!q.done;
+  $("next").textContent=i===S.length-1?"Selesai ✓":"Selanjutnya →";
 }
 function pilih(k,el){
   if(kunci)return;
   const q=S[i];
   if(q.opts[k]===q.w){
-    kunci=true;streak=q.salah.length?0:streak+1;
+    kunci=true;q.done=true;streak=q.salah.length?0:streak+1;
     el.classList.add("right");
     document.querySelectorAll(".opt").forEach(b=>b.disabled=true);
-    $("hint").textContent="";$("pb").style.width=((i+1)/S.length*100)+"%";
+    $("hint").textContent="";$("pb").style.width=(S.filter(x=>x.done).length/S.length*100)+"%";
+    $("next").disabled=false;
     efekBenar(el);
-    setTimeout(()=>{i++;i<S.length?soal():selesai()},1300);
+    tm=setTimeout(()=>nav(1),1300);
   }else{
     if(!q.salah.includes(k))q.salah.push(k);
     el.classList.add("wrong");el.disabled=true;
     $("hint").textContent="Belum tepat, coba lagi! 💪";
   }
+}
+function nav(d){
+  clearTimeout(tm);
+  if(d>0&&i===S.length-1)return selesai();
+  i+=d;soal();
 }
 function efekBenar(el){
   const t=$("toast");t.classList.remove("show");void t.offsetWidth;t.classList.add("show");
