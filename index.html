@@ -59,6 +59,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:Nunito,system-ui,
 @keyframes pop{40%{transform:scale(1.04)}}
 @keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
 .nav{justify-content:space-between;margin:16px 0 0}.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.hi{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--bg);border-radius:14px;padding:10px 14px;margin:8px 0}.hi small{color:var(--mut)}
 .hint{text-align:center;min-height:1.6em;color:var(--bad);font-weight:800}
 .toast{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,184,148,.94);color:#fff;font-size:2rem;font-weight:800;opacity:0;pointer-events:none;z-index:5}
 .toast span{font-size:4rem}
@@ -108,6 +109,7 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:Nunito,system-ui,
     <b>Mau berapa soal?</b>
     <div class="pills" id="pills"></div>
     <button class="btn" onclick="mulai()">🚀 Mulai</button>
+    <h3>📜 Riwayat Kuis</h3><div class="hist"></div>
   </div>
 
   <div id="play" class="hide">
@@ -130,10 +132,13 @@ body{margin:0;background:var(--bg);color:var(--tx);font-family:Nunito,system-ui,
       <div class="score" id="sk"></div>
       <p class="q" id="sk2"></p>
       <div class="bar" style="justify-content:center">
-        <button class="btn" onclick="mulai()">🔁 Ulangi Kuis</button>
-        <button class="btn alt" onclick="go('')">📚 Daftar Kosakata</button>
+        <button class="btn" id="btnSalah" onclick="mulaiSalah()">✏️ Kerjakan yang Salah</button>
+        <button class="btn alt" onclick="mulai()">🔁 Kuis Baru</button>
+        <button class="btn alt" onclick="go('')">🚪 Tinggalkan Kuis</button>
       </div>
     </div>
+    <h3>📜 Riwayat Kuis</h3>
+    <div class="card hist"></div>
     <h3>📝 Pembahasan</h3>
     <div id="rv"></div>
   </div>
@@ -187,9 +192,22 @@ const teks=w=>w[2]+" — "+w[3];
 const acak=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
 function pills(){$("pills").innerHTML=[10,20,50,150].map(n=>`<button class="chip${n===N?" on":""}" onclick="N=${n};pills()">${n===150?"Semua (150)":n+" soal"}</button>`).join("")}
 
-function reset(){$("setup").classList.remove("hide");$("play").classList.add("hide");$("hasil").classList.add("hide");pills()}
-function mulai(){
-  S=acak(D).slice(0,N).map(w=>({w,salah:[],opts:acak([w,...acak(D.filter(x=>teks(x)!==teks(w))).slice(0,3)])}));
+function reset(){$("setup").classList.remove("hide");$("play").classList.add("hide");$("hasil").classList.add("hide");pills();riwayat()}
+let H=[],mode="baru";
+try{H=JSON.parse(localStorage.getItem("hsk1_riwayat")||"[]")}catch(e){}
+function simpan(){try{localStorage.setItem("hsk1_riwayat",JSON.stringify(H.slice(0,30)))}catch(e){}}
+function hapusRiwayat(){if(confirm("Hapus semua riwayat kuis?")){H=[];simpan();riwayat()}}
+function riwayat(){
+  const h=H.length?H.map((r,k)=>`<div class="hi"><div><b>${r.b}/${r.n}</b> (${Math.round(r.b/r.n*100)}%)${r.m==="salah"?" · latihan soal salah":""}<br><small>${new Date(r.t).toLocaleString("id-ID",{dateStyle:"medium",timeStyle:"short"})}</small></div>`
+    +(r.s.length?`<button class="btn alt sm" onclick="mulai(H[${k}].s)">✏️ Kerjakan yang salah (${r.s.length})</button>`:`<span class="ok"><b>Sempurna 🎉</b></span>`)+`</div>`).join("")
+    +`<button class="btn alt sm" onclick="hapusRiwayat()">🗑️ Hapus riwayat</button>`:`<p class="q">Belum ada riwayat.</p>`;
+  document.querySelectorAll(".hist").forEach(e=>e.innerHTML=h);
+}
+function mulaiSalah(){mulai(S.filter(q=>q.salah.length).map(q=>q.w[0]))}
+function mulai(nos){
+  mode=nos?"salah":"baru";
+  const src=nos?D.filter(w=>nos.includes(w[0])):D;
+  S=acak(src).slice(0,nos?src.length:N).map(w=>({w,salah:[],opts:acak([w,...acak(D.filter(x=>teks(x)!==teks(w))).slice(0,3)])}));
   clearTimeout(tm);i=0;streak=0;$("toast").classList.remove("show");
   $("setup").classList.add("hide");$("hasil").classList.add("hide");$("play").classList.remove("hide");
   scrollTo(0,0);soal();
@@ -251,6 +269,10 @@ function selesai(){
          :`<div>Jawabanmu yang salah: <span class="no">${q.salah.map(k=>L[k]+". "+teks(q.opts[k])).join(" · ")}</span></div><div>Jawaban benar: <span class="ok"><b>${L[bn]}. ${teks(q.w)}</b></span></div>`)
      +`</div>`;
   });
+  const sal=S.filter(q=>q.salah.length).map(q=>q.w[0]);
+  H.unshift({t:Date.now(),n:S.length,b:benar,s:sal,m:mode});simpan();riwayat();
+  $("btnSalah").classList.toggle("hide",!sal.length);
+  $("btnSalah").textContent=`✏️ Kerjakan yang Salah (${sal.length})`;
   const p=Math.round(benar/S.length*100);
   const [e,m]=p>=90?["🏆","Luar biasa!"]:p>=70?["🔥","Keren, hampir sempurna!"]:p>=50?["💪","Lumayan, terus berlatih!"]:["🌱","Tenang, ulangi lagi pasti makin lancar!"];
   $("emo").textContent=e;$("msg").textContent=m;
@@ -259,7 +281,7 @@ function selesai(){
   $("rv").innerHTML=h;scrollTo(0,0);
 }
 
-chips();tampil();route();
+chips();tampil();riwayat();route();
 </script>
 </body>
-</html>
+</html> 
