@@ -565,18 +565,20 @@ function renderList(){
 
 /* --- Detail latihan --- */
 function renderDet(n){
-  const L=lessons()[n-1],s=lstat(L);
+  const Ls=lessons(),L=Ls[n-1],s=lstat(L),nxt=Ls[n],prv=Ls[n-2];
+  const nm=x=>(x.kat!==L.kat?x.kat+" · ":"")+x.nama;
   let h=`<div class="card"><div class="lh"><b style="font-size:1.2rem">${L.nama}</b><span class="bdg b${SK[s.st]}">${SL[s.st]}</span></div>
    <p class="sub2">Progress: ${s.c}/${s.n} Hanzi · ${s.pct}%</p>${bar(s.pct)}
    <div class="bar">`+(s.st==="belum"?`<button class="btn" onclick="startBelajar(${n},0)">▶ Mulai Belajar</button>`
     :s.st==="proses"?`<button class="btn" onclick="startBelajar(${n},0)">▶ Lanjutkan Belajar</button><button class="btn alt" onclick="startBelajar(${n},1)">🔁 Ulangi Latihan</button>`
-    :`<button class="btn" onclick="startBelajar(${n},1)">🔁 Ulangi Latihan</button>`)+`</div></div>`;
+    :(nxt?`<button class="btn" onclick="go('belajar/${n+1}')">Lanjut ke ${nm(nxt)} →</button><button class="btn alt" onclick="startBelajar(${n},1)">🔁 Ulangi Latihan</button>`:`<button class="btn" onclick="startBelajar(${n},1)">🔁 Ulangi Latihan</button>`))+`</div></div>`;
   h+=L.ids.map(id=>{
     const w=D[id-1],x=B.hz[id]||{},st=hs(id),mk=MODES.map((m,i)=>`<i class="${st==="selesai"||(x.mode&&x.mode[m])?"d":""}" title="${m}">${"TPAF"[i]}</i>`).join("");
     return `<div class="hr"><div class="hn">${L.start+L.ids.indexOf(id)+1}</div><div class="hh">${w[1]}</div><div class="hm"><b>${w[2]}</b><br><small>${w[3]}</small></div>
      <div class="hx"><span class="bdg b${SK[st]}">${st==="selesai"?"✓ Selesai":st==="proses"?"⏳ Sedang dipelajari":"○ Belum dipelajari"}</span><div class="mk">${mk}</div><small>${x.coba||0}× percobaan · ${tglf(x.terakhir)}</small></div>
      <button class="btn alt sm" onclick="startBelajar(${n},${st==="selesai"?1:0},${id})">${st==="selesai"?"Ulangi":st==="proses"?"Lanjut":"Latih"}</button></div>`}).join("");
   h+=`<p class="sub2">T = Trace · P = Part · A = Arrow · F = Free</p>`;
+  h+=`<div class="bar nav">${prv?`<button class="btn alt sm" onclick="go('belajar/${n-1}')">← ${nm(prv)}</button>`:"<span></span>"}${nxt?`<button class="btn alt sm" onclick="go('belajar/${n+1}')">${nm(nxt)} →</button>`:""}</div>`;
   $("bl-det").innerHTML=h;
 }
 
@@ -639,7 +641,7 @@ function kataSelesai(no){
 }
 function selesaiBelajar(){
   const n=BL.n,L=lessons()[n-1],s=L&&lstat(L);BL=null;go("belajar/"+n);
-  setTimeout(()=>pesan(s&&s.st==="selesai"?"🎉":"💾",s&&s.st==="selesai"?`Latihan ${L.kat} · ${L.nama} selesai!`:"Progres belajarmu sudah tersimpan.",[{l:"OK"}]),150);
+  setTimeout(()=>pesan(s&&s.st==="selesai"?"🎉":"💾",s&&s.st==="selesai"?`Latihan ${L.kat} · ${L.nama} selesai!`:"Progres belajarmu sudah tersimpan.",(s&&s.st==="selesai"&&lessons()[n])?[{l:"Lanjut ke "+lessons()[n].nama+" →",f:()=>go("belajar/"+(n+1))},{l:"Tutup",alt:1}]:[{l:"OK"}]),150);
 }
 
 chips();tampil();riwayat();route();
