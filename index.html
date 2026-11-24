@@ -467,7 +467,7 @@ function selesaiLatihan(){
   $("tfoot").classList.add("hide");$("fb").classList.remove("hide");
   if(BL)simpanLatihan();
 }
-function lanjut(){eI++;eI<E.length?latihan():selesaiBelajar()}
+function lanjut(){clearTimeout(tm);eI++;eI<E.length?latihan():selesaiBelajar()}
 $("tbtn").onclick=lanjut;
 $("tskip").onclick=()=>{ts=0;$("tstreak").textContent="";lanjut()};
 $("tsp").onclick=()=>say(T[E[eI].wi][1]);
@@ -626,9 +626,11 @@ function simpanLatihan(){
   sv();sinkLat(BL.n);
   const nx=E[eI+1];
   if(fin||(nx&&nx.wi!==e.wi&&BL.ulang)){$("fbt").textContent="Hanzi selesai! 🎉"}
+  const hold=!!(fin&&BL.pesan);
   if(fin&&BL.pesan){const p=BL.pesan,n=BL.n;BL.pesan=null;setTimeout(()=>{
     if(p==="all")pesan("🏆","Selamat! Seluruh 150 Hanzi HSK 1 sudah kamu selesaikan.",[{l:"Lihat Statistik",f:()=>go("statistik")},{l:"Tutup",alt:1}]);
   },500)}
+  if(!hold){clearTimeout(tm);tm=setTimeout(lanjut,1400)}
 }
 function kataSelesai(no){
   const tg=today(),d=B.hari[tg]||(B.hari[tg]={selesai:[]});
